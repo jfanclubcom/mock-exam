@@ -1,0 +1,17 @@
+{
+  "name": "四年級人文科模擬測驗",
+  "short_name": "人文科測驗",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#f3efe6",
+  "theme_color": "#14384f",
+  "lang": "zh-HK",
+  "icons": [
+    {
+      "src": "assets/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
