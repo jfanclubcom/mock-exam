@@ -1,13 +1,33 @@
 (function () {
   "use strict";
 
-  const exam = window.EXAM;
   const gradeApi = window.ExamGrade;
   const figures = window.ExamFigures;
   const app = document.getElementById("app");
   const live = document.getElementById("live");
   const modal = document.getElementById("modal");
-  const storageKey = "hk-p4-humanities-mock-v1";
+  const activeKey = "hk-p4-humanities-active";
+
+  function bankFor(id) {
+    return id === "v2" ? window.EXAM_V2 : window.EXAM;
+  }
+
+  function keyFor(id) {
+    return id === "v2" ? "hk-p4-humanities-mock-v2" : "hk-p4-humanities-mock-v1";
+  }
+
+  let paperId = "v1";
+  try {
+    const savedPaper = localStorage.getItem(activeKey);
+    if (savedPaper === "v1" || savedPaper === "v2") paperId = savedPaper;
+  } catch (error) {
+    paperId = "v1";
+  }
+  let exam = bankFor(paperId);
+
+  function storageKey() {
+    return keyFor(paperId);
+  }
 
   const state = loadState();
 
@@ -34,7 +54,7 @@
       filter: "all",
     };
     try {
-      const raw = localStorage.getItem(storageKey);
+      const raw = localStorage.getItem(storageKey());
       if (!raw) return fresh;
       const data = JSON.parse(raw);
       if (!data || data.version !== exam.version || typeof data.answers !== "object") return fresh;
@@ -56,7 +76,8 @@
 
   function saveState() {
     try {
-      localStorage.setItem(storageKey, JSON.stringify(state));
+      localStorage.setItem(storageKey(), JSON.stringify(state));
+      localStorage.setItem(activeKey, paperId);
     } catch (error) {
       /* 私人瀏覽模式可能無法寫入，仍可在本次開啟中作答。 */
     }
@@ -135,6 +156,72 @@
     return { title: "加油！", text: "這次先當作練習。錯題就是溫習清單，一課一課看解釋，再重考一次。" };
   }
 
+  function peek(id) {
+    try {
+      const raw = localStorage.getItem(keyFor(id));
+      if (!raw) return null;
+      const data = JSON.parse(raw);
+      const bank = bankFor(id);
+      if (!data || data.version !== bank.version || typeof data.answers !== "object") return null;
+      const count = bank.questions.filter((question) => {
+        const answer = data.answers[question.id];
+        if (!answer) return false;
+        if (question.type === "mcq") return Boolean(answer.choice);
+        return question.blanks.some((blank) => String((answer.blanks || {})[blank.id] || "").trim());
+      }).length;
+      return { started: Boolean(data.started), submitted: Boolean(data.submitted), count };
+    } catch (error) {
+      return null;
+    }
+  }
+
+  function versionCard(id, title, blurb) {
+    const saved = peek(id);
+    let label = `開始${title}`;
+    let action = "start";
+    if (saved && saved.started && !saved.submitted) {
+      label = `繼續${title}（已作答 ${saved.count}／40）`;
+      action = "resume";
+    } else if (saved && saved.submitted && saved.started) {
+      label = `查看${title}成績`;
+      action = "review";
+    }
+    return h("article", { class: "version-card" }, [
+      h("h3", { text: title }),
+      h("p", { text: blurb }),
+      h("button", {
+        class: "btn btn-primary",
+        type: "button",
+        "data-action": action,
+        "data-paper": id,
+        text: label,
+      }),
+    ]);
+  }
+
+  function beginPaper(nextPaper, action) {
+    paperId = nextPaper === "v2" ? "v2" : "v1";
+    exam = bankFor(paperId);
+    const loaded = loadState();
+    Object.keys(state).forEach((key) => delete state[key]);
+    if (action === "start") {
+      Object.assign(state, blankState());
+      state.started = true;
+      state.index = 0;
+      state.order = gradeApi.shuffleIds(exam.questions.map((question) => question.id));
+    } else {
+      Object.assign(state, loaded);
+      state.started = true;
+      if (!state.order || state.order.length !== exam.questions.length) {
+        state.order = gradeApi.shuffleIds(exam.questions.map((question) => question.id));
+        state.index = 0;
+      }
+    }
+    saveState();
+    render();
+    window.scrollTo(0, 0);
+  }
+
   function render() {
     app.replaceChildren();
     if (!state.started) renderCover();
@@ -145,7 +232,6 @@
   function renderCover() {
     const puppy = mascotFor(0);
     const squirrel = mascotFor(1);
-    const resume = state.started && !state.submitted;
     app.append(
       h("main", { class: "wrap cover" }, [
         h("p", { class: "eyebrow", text: "小學四年級上學期　·　人文科" }),
@@ -174,12 +260,12 @@
             ])
           )),
         ]),
-        h("div", { class: "actions" }, [
-          resume
-            ? h("button", { class: "btn btn-primary", type: "button", "data-action": "resume", text: `繼續測驗（已作答 ${answeredCount()}／40）` })
-            : h("button", { class: "btn btn-primary", type: "button", "data-action": "start", text: "開始測驗" }),
-          (resume || state.submitted) &&
-            h("button", { class: "btn btn-ghost", type: "button", "data-action": "restart", text: "重新開始" }),
+        h("section", { class: "panel", "aria-labelledby": "paper-title" }, [
+          h("h2", { id: "paper-title", text: "選擇試卷" }),
+          h("div", { class: "version-grid" }, [
+            versionCard("v1", "第一版", "現有試卷。題目、答案和解釋維持不變。"),
+            versionCard("v2", "第二版", "全新題目。範圍相同，問法和情境不同。"),
+          ]),
         ]),
         h("section", { class: "panel", "aria-labelledby": "how-title" }, [
           h("h2", { id: "how-title", text: "怎樣作答" }),
@@ -213,7 +299,7 @@
       h("main", { class: "wrap quiz" }, [
         h("div", { class: "progress-sticky" }, [
           h("div", { class: "progress-row" }, [
-            h("p", { class: "progress-title", text: "人文科模擬測驗" }),
+            h("p", { class: "progress-title", text: paperId === "v2" ? "人文科模擬測驗　第二版" : "人文科模擬測驗　第一版" }),
             h("p", { class: "progress-count", text: `題 ${state.index + 1}／${questions.length}` }),
           ]),
           h("div", {
@@ -265,6 +351,7 @@
         ]),
         h("p", { class: "fine", text: "答案暫存在這部裝置。若要清除，可按重新開始。" }),
         h("p", { class: "actions actions-quiet" }, [
+          h("button", { class: "btn btn-text", type: "button", "data-action": "home", text: "返回選卷" }),
           h("button", { class: "btn btn-text", type: "button", "data-action": "restart", text: "重新開始" }),
         ]),
       ])
@@ -405,6 +492,7 @@
         h("div", { class: "review-list" }, graded.items.map((item, index) => renderReview(item, index))),
         h("div", { class: "actions" }, [
           h("button", { class: "btn btn-ghost", type: "button", "data-action": "print", text: "列印／儲存 PDF" }),
+          h("button", { class: "btn btn-ghost", type: "button", "data-action": "home", text: "返回選卷" }),
           h("button", { class: "btn btn-primary", type: "button", "data-action": "restart", text: "重新開始" }),
         ]),
         h("p", { class: "fine", text: "解釋依《奇妙的世界》四上第 1 至 5 課的學習重點整理，供溫習對照。原創小幫手與任何商標角色無關。" }),
@@ -551,12 +639,10 @@
     const button = event.target.closest("[data-action]");
     if (!button || button.hasAttribute("disabled")) return;
     const action = button.dataset.action;
-    if (action === "start" || action === "resume") {
-      state.started = true;
-      if (!state.order || state.order.length !== exam.questions.length) {
-        state.order = gradeApi.shuffleIds(exam.questions.map((question) => question.id));
-        state.index = 0;
-      }
+    if (action === "start" || action === "resume" || action === "review") {
+      beginPaper(button.dataset.paper || paperId, action);
+    } else if (action === "home") {
+      state.started = false;
       saveState();
       render();
       window.scrollTo(0, 0);

@@ -119,11 +119,20 @@ h3 { font-size: 1.15rem; line-height: 1.4; margin-bottom: 8px; }
   align-items: center;
 }
 
-.lesson-grid {
+.lesson-grid, .version-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
   gap: 12px;
 }
+
+.version-card {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 16px;
+}
+
+.version-card .btn { width: 100%; margin-top: 8px; }
 
 .lesson-card { padding: 16px 16px 12px; border-top: 6px solid #7ea8c4; }
 

@@ -150,3 +150,51 @@ if (failures.length) {
 }
 
 console.log("40 題、100 分、同義詞與部分得分檢查通過。");
+
+const v1Stem = exam.questions[0].stem;
+assert(v1Stem.indexOf("美兒要判斷中國在亞洲的位置") === 0, "第一版題幹被改動");
+const v2 = require("../js/questions-v2.js");
+assert(v2.questions.length === 40, "第二版題數不對");
+const v2Points = v2.questions.reduce((sum, question) => sum + grade.maxPoints(question), 0);
+assert(v2Points === 100, `第二版總分 ${v2Points}`);
+v2.lessons.forEach((lesson) => {
+  const items = v2.questions.filter((question) => question.lesson === lesson.id);
+  const lessonPoints = items.reduce((sum, question) => sum + grade.maxPoints(question), 0);
+  assert(items.length === 8, `第二版第${lesson.id}課題數 ${items.length}`);
+  assert(lessonPoints === 20, `第二版第${lesson.id}課分數 ${lessonPoints}`);
+});
+const v1Stems = new Set(exam.questions.map((question) => question.stem));
+v2.questions.forEach((question) => {
+  assert(!v1Stems.has(question.stem), `第二版題幹與第一版重複：${question.id}`);
+  assert(question.explanation && question.explanation.length > 12, `${question.id} 缺少解釋`);
+  if (question.type === "mcq") {
+    assert(question.choices.filter((choice) => choice.correct).length === 1, `${question.id} 正確項數目`);
+  }
+});
+const v2Counts = { A: 0, B: 0, C: 0, D: 0 };
+v2.questions.filter((question) => question.type === "mcq").forEach((question) => {
+  v2Counts[question.choices.find((choice) => choice.correct).id] += 1;
+});
+const v2Mcq = v2Counts.A + v2Counts.B + v2Counts.C + v2Counts.D;
+assert(v2Mcq === 29, `第二版選擇題 ${v2Mcq}`);
+assert(v2Counts.C + v2Counts.D >= v2Mcq / 2, `第二版 C+D 不足 ${JSON.stringify(v2Counts)}`);
+assert(v2Counts.A <= 8 && v2Counts.B <= 8, `第二版 A/B 過多 ${JSON.stringify(v2Counts)}`);
+const v2Perfect = grade.gradeExam(v2.questions, answerAll(v2.questions));
+assert(v2Perfect.earned === 100, `第二版全對 ${v2Perfect.earned}`);
+console.log("第二版選擇題正確項", JSON.stringify(v2Counts));
+
+function answerAll(list) {
+  const answers = {};
+  list.forEach((question) => {
+    if (question.type === "mcq") {
+      answers[question.id] = { choice: question.choices.find((choice) => choice.correct).id };
+    } else {
+      const blanks = {};
+      question.blanks.forEach((blank) => {
+        blanks[blank.id] = blank.accept[0];
+      });
+      answers[question.id] = { blanks };
+    }
+  });
+  return answers;
+}
