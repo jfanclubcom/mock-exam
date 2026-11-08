@@ -102,7 +102,7 @@
   function mascotFor(index) {
     const puppy = index % 2 === 0;
     return {
-      src: puppy ? "assets/mascot-puppy.svg" : "assets/mascot-squirrel.svg",
+      src: puppy ? "assets/mascot-puppy.png" : "assets/mascot-squirrel.png",
       name: puppy ? "豆豆" : "栗子",
       alt: puppy ? "原創小幫手豆豆，白色小狗" : "原創小幫手栗子，小飛鼠",
     };
@@ -267,15 +267,10 @@
   }
 
   function renderFigure(question) {
-    const box = h("figure", { class: "figure" });
-    const graphic = h("div", { class: "figure-svg" });
-    graphic.innerHTML = figures[question.figure]();
-    box.append(
-      graphic,
+    return h("figure", { class: "figure" }, [
+      h("img", { src: figures[question.figure], alt: question.figureAlt || "題目插圖" }),
       h("figcaption", { text: "原創示意，不是課本掃描，也不是官方標誌。" }),
-      h("p", { class: "sr-only", text: question.figureAlt || "" })
-    );
-    return box;
+    ]);
   }
 
   function renderChoices(question) {

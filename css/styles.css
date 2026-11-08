@@ -279,7 +279,7 @@ h3 { font-size: 1.15rem; line-height: 1.4; margin-bottom: 8px; }
   padding: 8px;
 }
 
-.figure svg { width: 100%; height: auto; display: block; }
+.figure img { width: 100%; height: auto; display: block; border-radius: 12px; background: #fff; }
 
 .figure figcaption { margin: 8px 4px 4px; }
 

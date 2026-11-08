@@ -1,3 +1,5 @@
+const fs = require("fs");
+const path = require("path");
 const exam = require("../js/questions.js");
 const grade = require("../js/grade.js");
 const figures = require("../js/figures.js");
@@ -28,8 +30,17 @@ exam.questions.forEach((question, index) => {
   assert(question.badges && question.badges.length > 0, `${question.id} 缺少題型標籤`);
   assert(question.points === grade.maxPoints(question), `${question.id} 分數不一致`);
   if (question.figure) {
-    assert(typeof figures[question.figure] === "function", `${question.id} 找不到插圖 ${question.figure}`);
+    const src = figures[question.figure];
+    assert(typeof src === "string" && src.endsWith(".png"), `${question.id} 插圖應指向 PNG`);
+    assert(!String(src).includes(".svg"), `${question.id} 不應使用 SVG`);
+    assert(fs.existsSync(path.join(__dirname, "..", src)), `${question.id} 找不到 ${src}`);
     assert(question.figureAlt, `${question.id} 缺少圖像說明`);
+  }
+  if (question.type === "mcq") {
+    const joined = question.choices.map((choice) => choice.text).join(" ");
+    ["午餐菜單", "借書紀錄", "歐洲中部", "座位表"].forEach((banned) => {
+      assert(!joined.includes(banned), `${question.id} 仍有過易干擾項：${banned}`);
+    });
   }
   if (question.type === "mcq") {
     const correct = question.choices.filter((choice) => choice.correct);
