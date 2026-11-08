@@ -93,8 +93,35 @@ assert(simplified.earned === 4, `簡體圖例／格網應滿分，實際 ${simpl
 const partial = grade.gradeQuestion(exam.questions[3], { blanks: { legend: "圖例", grid: "比例尺" } });
 assert(partial.earned === 2 && partial.partial, `部分得分應為 2，實際 ${partial.earned}`);
 
-const seasons = grade.gradeQuestion(exam.questions[16], { blanks: { seasons: "春、夏、秋、冬" } });
-assert(seasons.earned === 2, "春、夏、秋、冬應接受");
+const climateGoals = grade.gradeQuestion(exam.questions[16], { blanks: { peak: "碳達峰", neutral: "碳中和" } });
+assert(climateGoals.earned === 2, "碳達峰、碳中和應接受");
+const climateLoose = grade.gradeQuestion(exam.questions[16], { blanks: { peak: "減排", neutral: "綠色生活" } });
+assert(climateLoose.earned === 0, "減排不應當作碳達峰");
+
+const counts = { A: 0, B: 0, C: 0, D: 0 };
+exam.questions.filter((question) => question.type === "mcq").forEach((question) => {
+  counts[question.choices.find((choice) => choice.correct).id] += 1;
+});
+const mcqTotal = counts.A + counts.B + counts.C + counts.D;
+assert(mcqTotal === 29, `選擇題應有 29 題，實際 ${mcqTotal}`);
+assert(counts.C + counts.D > mcqTotal / 2, `C+D 應多於一半，實際 ${JSON.stringify(counts)}`);
+assert(counts.A >= 5 && counts.B >= 5 && counts.C >= 6 && counts.D >= 6, `答案分佈不均 ${JSON.stringify(counts)}`);
+["A", "B", "C", "D"].forEach((letter) => {
+  assert(counts[letter] >= 4, `${letter} 太少：${JSON.stringify(counts)}`);
+});
+
+const q06 = exam.questions.find((question) => question.id === "q06");
+assert(!q06.stem.includes("虛線") && !q06.stem.includes("出入口"), "第6題題幹不應提示虛線或出入口");
+const q11 = exam.questions.find((question) => question.id === "q11");
+assert(!q11.choices.some((choice) => /\d/.test(choice.text)), "第11題選項不應附高度數字");
+assert(!/\d/.test(q11.stem), "第11題題幹不應附高度數字");
+["不要對調", "並不準確", "注意虛線", "不要把"].forEach((hint) => {
+  assert(!exam.questions.some((question) => question.stem.includes(hint)), `題幹仍有提示：${hint}`);
+});
+
+const shuffled = grade.shuffleIds(["q01", "q02", "q03", "q04"], () => 0);
+assert(shuffled.slice().sort().join() === "q01,q02,q03,q04", "亂序必須保留全部題號");
+assert(shuffled.join() !== "q01,q02,q03,q04", "亂序不應維持原次序");
 
 const swapped = grade.gradeQuestion(exam.questions[24], {
   blanks: { shape: "球體", water: "陸地", land: "海洋" },
