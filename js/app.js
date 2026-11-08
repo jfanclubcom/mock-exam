@@ -17,6 +17,7 @@
       started: false,
       submitted: false,
       index: 0,
+      order: [],
       answers: {},
       filter: "all",
     };
@@ -28,6 +29,7 @@
       started: false,
       submitted: false,
       index: 0,
+      order: [],
       answers: {},
       filter: "all",
     };
@@ -42,6 +44,10 @@
       data.filter = data.filter || "all";
       data.started = Boolean(data.started);
       data.submitted = Boolean(data.submitted);
+      data.order = Array.isArray(data.order) ? data.order : [];
+      const known = new Set(exam.questions.map((question) => question.id));
+      const orderOk = data.order.length === exam.questions.length && data.order.every((id) => known.has(id));
+      if (!orderOk) data.order = [];
       return data;
     } catch (error) {
       return fresh;
@@ -91,8 +97,14 @@
     return exam.questions.filter(isAnswered).length;
   }
 
+  function paper() {
+    const byId = new Map(exam.questions.map((question) => [question.id, question]));
+    if (!state.order || state.order.length !== exam.questions.length) return exam.questions.slice();
+    return state.order.map((id) => byId.get(id));
+  }
+
   function resultNow() {
-    return gradeApi.gradeExam(exam.questions, state.answers);
+    return gradeApi.gradeExam(paper(), state.answers);
   }
 
   function say(message) {
@@ -172,7 +184,7 @@
         h("section", { class: "panel", "aria-labelledby": "how-title" }, [
           h("h2", { id: "how-title", text: "怎樣作答" }),
           h("ul", { class: "plain-list" }, [
-            h("li", { text: "題型包括不供詞填充、選擇、生活情境、看圖辨別和時事。題目按課次排列。" }),
+            h("li", { text: "題型包括不供詞填充、選擇、生活情境、看圖辨別和時事。每次重新開始都會打亂題序，不會按課次排列。" }),
             h("li", { text: "填充題每格獨立計分，答對一部分也有分。大小寫、標點和常見同義詞會一併接受。" }),
             h("li", { text: "提交後必定顯示總分。每一題都會列出分數、正確答案和解釋，並註明所屬課次。" }),
             h("li", { text: "答案只儲存在這部裝置的瀏覽器，可以關掉頁面後繼續。按「重新開始」會清除紀錄。" }),
@@ -192,37 +204,34 @@
   }
 
   function renderQuiz() {
-    const question = exam.questions[state.index];
-    const lesson = lessonById(question.lesson);
-    const lessonQuestions = exam.questions.filter((item) => item.lesson === question.lesson);
-    const lessonPos = lessonQuestions.findIndex((item) => item.id === question.id) + 1;
+    const questions = paper();
+    const question = questions[state.index];
     const mascot = mascotFor(state.index);
-    const progress = ((state.index + 1) / exam.questions.length) * 100;
+    const progress = ((state.index + 1) / questions.length) * 100;
 
     app.append(
       h("main", { class: "wrap quiz" }, [
         h("div", { class: "progress-sticky" }, [
           h("div", { class: "progress-row" }, [
             h("p", { class: "progress-title", text: "人文科模擬測驗" }),
-            h("p", { class: "progress-count", text: `題 ${state.index + 1}／${exam.questions.length}` }),
+            h("p", { class: "progress-count", text: `題 ${state.index + 1}／${questions.length}` }),
           ]),
           h("div", {
             class: "bar",
             role: "progressbar",
             "aria-valuemin": "1",
-            "aria-valuemax": String(exam.questions.length),
+            "aria-valuemax": String(questions.length),
             "aria-valuenow": String(state.index + 1),
-            "aria-valuetext": `第 ${state.index + 1} 題，共 ${exam.questions.length} 題`,
+            "aria-valuetext": `第 ${state.index + 1} 題，共 ${questions.length} 題`,
           }, [h("span", { style: `width:${progress}%` })]),
           h("p", { class: "progress-meta" }, [
-            h("span", { id: "answered-label", text: `已作答 ${answeredCount()}／${exam.questions.length}` }),
+            h("span", { id: "answered-label", text: `已作答 ${answeredCount()}／${questions.length}` }),
             document.createTextNode("　·　分數於提交後顯示"),
           ]),
         ]),
         h("div", { class: "quiz-layout" }, [
           h("div", { class: "main-col" }, [
             h("article", { class: "card", "aria-labelledby": "question-title" }, [
-              h("p", { class: "kicker", text: `${lessonLabel(question.lesson)}　·　課內第 ${lessonPos}／${lesson.count} 題` }),
               h("div", { class: "badge-row" }, question.badges.map((badge) => h("span", { class: `badge badge-${badge}`, text: badge }))),
               h("h1", { id: "question-title", tabindex: "-1", text: question.stem }),
               h("p", { class: "points", text: `本題 ${gradeApi.maxPoints(question)} 分` }),
@@ -246,7 +255,7 @@
                 class: "btn btn-ghost",
                 type: "button",
                 "data-action": "next",
-                disabled: state.index === exam.questions.length - 1 ? "disabled" : null,
+                disabled: state.index === questions.length - 1 ? "disabled" : null,
                 text: "下一題",
               }),
               h("button", { class: "btn btn-primary", type: "button", "data-action": "submit", text: "提交試卷" }),
@@ -263,7 +272,7 @@
     const title = document.getElementById("question-title");
     if (title) title.focus({ preventScroll: true });
     refreshChrome();
-    say(`第 ${state.index + 1} 題，共 ${exam.questions.length} 題。${lesson.title}。`);
+    say(`第 ${state.index + 1} 題，共 ${questions.length} 題。`);
   }
 
   function renderFigure(question) {
@@ -316,7 +325,7 @@
   function renderPalette() {
     return h("aside", { class: "palette-card", "aria-label": "題目一覽" }, [
       h("h2", { text: "題目一覽" }),
-      h("div", { class: "palette" }, exam.questions.map((question, index) => {
+      h("div", { class: "palette" }, paper().map((question, index) => {
         const classes = ["jump"];
         if (index === state.index) classes.push("is-current");
         if (isAnswered(question)) classes.push("is-done");
@@ -413,7 +422,7 @@
   function gradedTarget(filter) {
     const graded = resultNow();
     const match = graded.items.find((item, index) => {
-      const question = exam.questions[index];
+      const question = paper()[index];
       if (filter === "all") return index === 0;
       if (filter === "miss") return !item.ok;
       return String(question.lesson) === filter;
@@ -422,7 +431,7 @@
   }
 
   function renderReview(item, index) {
-    const question = exam.questions[index];
+    const question = paper()[index];
     const lesson = lessonById(question.lesson);
     const status = item.ok ? "正確" : item.partial ? "部分正確" : "不正確";
     const statusClass = item.ok ? "is-ok" : item.partial ? "is-part" : "is-bad";
@@ -463,9 +472,9 @@
     const label = document.getElementById("answered-label");
     if (label) label.textContent = `已作答 ${answeredCount()}／${exam.questions.length}`;
     document.querySelectorAll("[data-jump]").forEach((button) => {
-      const question = exam.questions.find((item) => item.id === button.dataset.jump);
+      const question = paper().find((item) => item.id === button.dataset.jump);
       button.classList.toggle("is-done", isAnswered(question));
-      const index = exam.questions.indexOf(question);
+      const index = paper().indexOf(question);
       button.setAttribute("aria-label", `第 ${index + 1} 題${isAnswered(question) ? "，已作答" : "，未作答"}`);
     });
     document.querySelectorAll(".choice").forEach((label) => {
@@ -475,7 +484,7 @@
   }
 
   function goTo(index) {
-    state.index = Math.max(0, Math.min(exam.questions.length - 1, index));
+    state.index = Math.max(0, Math.min(paper().length - 1, index));
     saveState();
     render();
     window.scrollTo(0, 0);
@@ -500,7 +509,7 @@
   }
 
   async function submitExam() {
-    const left = exam.questions.length - answeredCount();
+    const left = paper().length - answeredCount();
     const yes = await ask({
       title: "確定提交試卷？",
       message: left
@@ -544,13 +553,17 @@
     const action = button.dataset.action;
     if (action === "start" || action === "resume") {
       state.started = true;
+      if (!state.order || state.order.length !== exam.questions.length) {
+        state.order = gradeApi.shuffleIds(exam.questions.map((question) => question.id));
+        state.index = 0;
+      }
       saveState();
       render();
       window.scrollTo(0, 0);
     } else if (action === "prev") goTo(state.index - 1);
     else if (action === "next") goTo(state.index + 1);
     else if (action === "jump") {
-      const index = exam.questions.findIndex((question) => question.id === button.dataset.jump);
+      const index = paper().findIndex((question) => question.id === button.dataset.jump);
       if (state.submitted) {
         const review = document.getElementById(`review-${button.dataset.jump}`);
         if (review) review.scrollIntoView({ behavior: "smooth", block: "start" });

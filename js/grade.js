@@ -209,5 +209,17 @@
     return question.points;
   }
 
-  return { normalizeAnswer, gradeQuestion, gradeExam, maxPoints };
+  function shuffleIds(ids, random) {
+    const roll = typeof random === "function" ? random : Math.random;
+    const copy = ids.slice();
+    for (let i = copy.length - 1; i > 0; i -= 1) {
+      const j = Math.floor(roll() * (i + 1));
+      const swap = copy[i];
+      copy[i] = copy[j];
+      copy[j] = swap;
+    }
+    return copy;
+  }
+
+  return { normalizeAnswer, gradeQuestion, gradeExam, maxPoints, shuffleIds };
 });
