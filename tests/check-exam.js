@@ -113,6 +113,7 @@ assert(counts.A >= 5 && counts.B >= 5 && counts.C >= 6 && counts.D >= 6, `答案
 const q06 = exam.questions.find((question) => question.id === "q06");
 assert(!q06.stem.includes("虛線") && !q06.stem.includes("出入口"), "第6題題幹不應提示虛線或出入口");
 const q11 = exam.questions.find((question) => question.id === "q11");
+assert(!q11.figure, "第一版山峯題不應配圖");
 assert(!q11.choices.some((choice) => /\d/.test(choice.text)), "第11題選項不應附高度數字");
 assert(!/\d/.test(q11.stem), "第11題題幹不應附高度數字");
 ["不要對調", "並不準確", "注意虛線", "不要把"].forEach((hint) => {
@@ -181,6 +182,11 @@ assert(v2Counts.C + v2Counts.D >= v2Mcq / 2, `第二版 C+D 不足 ${JSON.string
 assert(v2Counts.A <= 8 && v2Counts.B <= 8, `第二版 A/B 過多 ${JSON.stringify(v2Counts)}`);
 const v2Perfect = grade.gradeExam(v2.questions, answerAll(v2.questions));
 assert(v2Perfect.earned === 100, `第二版全對 ${v2Perfect.earned}`);
+["v2q09", "v2q15"].forEach((id) => {
+  const question = v2.questions.find((item) => item.id === id);
+  assert(question && !question.figure, `${id} 不應再配山峯圖`);
+  assert(question.choices.every((choice) => !/\d/.test(choice.text)), `${id} 選項不應寫米數`);
+});
 console.log("第二版選擇題正確項", JSON.stringify(v2Counts));
 
 function answerAll(list) {

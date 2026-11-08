@@ -183,9 +183,7 @@
       lesson: 2,
       type: "mcq",
       points: 2,
-      badges: ["看圖", "選擇"],
-      figure: "mountains",
-      figureAlt: "棒形圖由左至右是大帽山 957 米、鳳凰山 934 米、飛鵝山 602 米、獅子山 495 米。",
+      badges: ["選擇"],
       stem: "課本列出的四座山峯之中，第二高的是哪一座？",
       choices: [
         { id: "A", text: "大帽山" },

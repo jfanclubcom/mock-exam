@@ -146,9 +146,7 @@
       lesson: 2,
       type: "mcq",
       points: 2,
-      badges: ["看圖", "選擇"],
-      figure: "mountains",
-      figureAlt: "棒形圖列出大帽山、鳳凰山、飛鵝山和獅子山的高度。",
+      badges: ["選擇"],
       stem: "課本這四座山峯之中，哪一座低於 600 米？",
       choices: [
         { id: "A", text: "大帽山" },
@@ -238,9 +236,7 @@
       lesson: 2,
       type: "mcq",
       points: 3,
-      badges: ["看圖", "選擇"],
-      figure: "mountains",
-      figureAlt: "棒形圖列出大帽山、鳳凰山、飛鵝山和獅子山的高度。",
+      badges: ["選擇"],
       stem: "課本列出的這四座山峯，哪一座最高？",
       choices: [
         { id: "A", text: "大帽山", correct: true },
