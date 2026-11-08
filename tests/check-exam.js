@@ -38,7 +38,7 @@ exam.questions.forEach((question, index) => {
   }
   if (question.type === "mcq") {
     const joined = question.choices.map((choice) => choice.text).join(" ");
-    ["午餐菜單", "借書紀錄", "歐洲中部", "座位表"].forEach((banned) => {
+    ["午餐菜單", "借書紀錄", "歐洲中部", "座位表", "不能", "不會", "不必再", "兩項都"].forEach((banned) => {
       assert(!joined.includes(banned), `${question.id} 仍有過易干擾項：${banned}`);
     });
   }
@@ -170,6 +170,10 @@ v2.questions.forEach((question) => {
   assert(question.explanation && question.explanation.length > 12, `${question.id} 缺少解釋`);
   if (question.type === "mcq") {
     assert(question.choices.filter((choice) => choice.correct).length === 1, `${question.id} 正確項數目`);
+    const joined = question.choices.map((choice) => choice.text).join(" ");
+    ["不能", "不會", "不必再", "兩項都"].forEach((banned) => {
+      assert(!joined.includes(banned), `${question.id} 仍有反向送分字眼：${banned}`);
+    });
   }
 });
 const v2Counts = { A: 0, B: 0, C: 0, D: 0 };
