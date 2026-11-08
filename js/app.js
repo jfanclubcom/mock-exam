@@ -174,7 +174,7 @@
           h("ul", { class: "plain-list" }, [
             h("li", { text: "題型包括不供詞填充、選擇、生活情境、看圖辨別和時事。題目按課次排列。" }),
             h("li", { text: "填充題每格獨立計分，答對一部分也有分。大小寫、標點和常見同義詞會一併接受。" }),
-            h("li", { text: "可不依順序作答。分數在提交後才顯示，並附有解釋和所屬課次。" }),
+            h("li", { text: "提交後必定顯示總分。每一題都會列出分數、正確答案和解釋，並註明所屬課次。" }),
             h("li", { text: "答案只儲存在這部裝置的瀏覽器，可以關掉頁面後繼續。按「重新開始」會清除紀錄。" }),
           ]),
         ]),
@@ -384,7 +384,11 @@
             ]);
           })),
         ]),
-        h("div", { class: "filter-row", role: "group", "aria-label": "篩選題目" }, filters.map(([id, label]) =>
+        h("section", { "aria-labelledby": "review-title" }, [
+          h("h2", { id: "review-title", text: "逐題覆核" }),
+          h("p", { class: "fine", text: "全部 40 題都會列出分數、正確答案和解釋。下方按鈕只負責跳到相關題目，不會收起任何一題。" }),
+        ]),
+        h("div", { class: "filter-row", role: "group", "aria-label": "跳到題目" }, filters.map(([id, label]) =>
           h("button", {
             class: state.filter === id ? "chip is-on" : "chip",
             type: "button",
@@ -394,7 +398,7 @@
             text: label,
           })
         )),
-        h("div", { class: "review-list" }, graded.items.map((item, index) => renderReview(item, index)).filter(Boolean)),
+        h("div", { class: "review-list" }, graded.items.map((item, index) => renderReview(item, index))),
         h("div", { class: "actions" }, [
           h("button", { class: "btn btn-ghost", type: "button", "data-action": "print", text: "列印／儲存 PDF" }),
           h("button", { class: "btn btn-primary", type: "button", "data-action": "restart", text: "重新開始" }),
@@ -402,40 +406,61 @@
         h("p", { class: "fine", text: "解釋依《奇妙的世界》四上第 1 至 5 課的學習重點整理，供溫習對照。原創小幫手與任何商標角色無關。" }),
       ])
     );
-    say(`成績 ${graded.earned} 分，滿分 100。${comment.title}`);
-    window.scrollTo(0, 0);
+    say(`成績 ${graded.earned} 分，滿分 100。全部 ${exam.questions.length} 題已列出分數、正確答案和解釋。`);
+  }
+
+  function reviewMatches(item, question) {
+    if (state.filter === "all") return true;
+    if (state.filter === "miss") return !item.ok;
+    return String(question.lesson) === state.filter;
+  }
+
+  function gradedTarget(filter) {
+    const graded = resultNow();
+    const match = graded.items.find((item, index) => {
+      const question = exam.questions[index];
+      if (filter === "all") return index === 0;
+      if (filter === "miss") return !item.ok;
+      return String(question.lesson) === filter;
+    });
+    return match ? document.getElementById(`review-${match.id}`) : document.getElementById("review-title");
   }
 
   function renderReview(item, index) {
     const question = exam.questions[index];
-    if (state.filter === "miss" && item.ok) return null;
-    if (["1", "2", "3", "4", "5"].includes(state.filter) && String(question.lesson) !== state.filter) return null;
+    const lesson = lessonById(question.lesson);
     const status = item.ok ? "正確" : item.partial ? "部分正確" : "不正確";
     const statusClass = item.ok ? "is-ok" : item.partial ? "is-part" : "is-bad";
-    return h("article", { class: `review card ${statusClass}`, id: `review-${question.id}` }, [
+    const dim = state.filter !== "all" && !reviewMatches(item, question);
+    const correctAnswer = question.type === "mcq"
+      ? item.correctText
+      : item.blanks.map((blank, blankIndex) => {
+        const swap = blank.ok && blank.matchedModel !== blank.model ? "（次序可對調，已接受）" : "";
+        return `第 ${blankIndex + 1} 格：${blank.model}${swap}`;
+      }).join("；");
+    return h("article", {
+      class: `review card ${statusClass}${dim ? " is-dim" : ""}`,
+      id: `review-${question.id}`,
+    }, [
       h("div", { class: "review-top" }, [
         h("p", { class: "kicker", text: `題 ${index + 1}　·　${lessonLabel(question.lesson)}` }),
-        h("p", { class: `status ${statusClass}`, text: `${status}　${item.earned}／${item.max}` }),
+        h("p", { class: `status ${statusClass}`, text: status }),
       ]),
       h("h3", { text: question.stem }),
-      question.type === "mcq"
-        ? h("div", { class: "answer-block" }, [
-            h("p", {}, [h("strong", { text: "你的答案： " }), item.givenText]),
-            h("p", {}, [h("strong", { text: "參考答案： " }), item.correctText]),
-          ])
-        : h("ul", { class: "blank-results" }, item.blanks.map((blank, blankIndex) =>
-            h("li", {}, [
-              h("p", {}, [
-                h("strong", { text: `第 ${blankIndex + 1} 格： ` }),
-                `${blank.given}　`,
-                blank.ok ? "✓" : "✗",
-                `　${blank.earned}／${blank.points}`,
-              ]),
-              h("p", { text: `參考答案：${blank.model}${blank.ok && blank.matchedModel !== blank.model ? `（已接受對調，對應「${blank.matchedModel}」）` : ""}` }),
-            ])
-          )),
-      h("p", { class: "explain" }, [h("strong", { text: "解釋　" }), question.explanation]),
+      h("dl", { class: "review-fields" }, [
+        reviewField("分數", `${item.earned}／${item.max}`),
+        reviewField("你的答案", item.givenText),
+        reviewField("正確答案", correctAnswer),
+        reviewField("解釋", `所屬${lesson.unit}第${lesson.id}課「${lesson.title}」。${question.explanation}`),
+      ]),
       item.ok ? h("p", { class: "praise", text: "答得好！" }) : null,
+    ]);
+  }
+
+  function reviewField(label, text) {
+    return h("div", {}, [
+      h("dt", { text: label }),
+      h("dd", { text: text }),
     ]);
   }
 
@@ -484,8 +509,8 @@
     const yes = await ask({
       title: "確定提交試卷？",
       message: left
-        ? `還有 ${left} 題未作答，未答題目以 0 分計算。提交後可以看分數和解釋，不能再改這一次的答案。`
-        : "提交後會顯示分數和各題解釋，不能再改這一次的答案。",
+        ? `還有 ${left} 題未作答，未答題目以 0 分計算。提交後會顯示總分，並逐題列出分數、正確答案和解釋。`
+        : "提交後會顯示總分，並逐題列出分數、正確答案和解釋。不能再改這一次的答案。",
       ok: "提交",
       cancel: "返回檢查",
     });
@@ -494,6 +519,7 @@
     state.filter = "all";
     saveState();
     render();
+    window.scrollTo(0, 0);
   }
 
   async function restart() {
@@ -541,6 +567,8 @@
       state.filter = button.dataset.filter;
       saveState();
       render();
+      const target = gradedTarget(state.filter);
+      if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   });
 

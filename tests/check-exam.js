@@ -63,7 +63,10 @@ function answerAllCorrect() {
 
 const perfect = grade.gradeExam(exam.questions, answerAllCorrect());
 assert(perfect.earned === 100, `全對只得 ${perfect.earned}`);
+assert(perfect.items.length === 40, "覆核題數應為 40");
 assert(perfect.items.every((item) => item.ok), "全對仍有題目未判對");
+assert(perfect.items.every((item) => item.max > 0 && item.correctText && item.correctText.trim()), "每題都要有分數和正確答案");
+assert(exam.questions.every((question) => question.explanation && question.explanation.trim().length > 12), "每題都要有解釋");
 
 const blank = grade.gradeExam(exam.questions, {});
 assert(blank.earned === 0, "空白試卷不應得分");

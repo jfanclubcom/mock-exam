@@ -390,9 +390,21 @@ h3 { font-size: 1.15rem; line-height: 1.4; margin-bottom: 8px; }
 .status.is-bad { color: var(--bad); }
 .status.is-part { color: var(--part); }
 
-.answer-block p, .blank-results, .explain, .praise { margin-bottom: 8px; }
-.blank-results { padding-left: 1.2rem; }
-.praise { font-weight: 700; color: var(--ok); margin-bottom: 0; }
+.review-fields { margin: 12px 0 0; }
+.review-fields div {
+  display: grid;
+  grid-template-columns: 6.5rem minmax(0, 1fr);
+  gap: 4px 12px;
+  margin: 0 0 10px;
+}
+.review-fields dt { margin: 0; font-weight: 800; }
+.review-fields dd { margin: 0; }
+.review.is-dim { opacity: 0.72; }
+.praise { font-weight: 700; color: var(--ok); margin: 8px 0 0; }
+
+@media (max-width: 640px) {
+  .review-fields div { grid-template-columns: 1fr; }
+}
 
 dialog {
   border: none;
